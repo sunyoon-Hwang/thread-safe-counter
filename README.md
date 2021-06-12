@@ -1,6 +1,6 @@
 # thread-safe-counter
 
-#### Project #2 (Make Your Own Shell)
+#### Project #2 (Compare performance Mutex vs Semaphore)
 
 * OS environment is WSL2
 * To measure execution time ex) time ./tscounter 1000000
