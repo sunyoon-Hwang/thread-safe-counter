@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
-#include <time.h>
 
 union semun {
     int val;
@@ -14,16 +13,76 @@ union semun {
     ushort *array;
 };
 
-    key_t key;
+#define PATH "/mnt/c"
+
+typedef struct sem__counter_t {
+    int value;
     int semid;
-    struct sembuf s;
     union semun arg;
-
-volatile unsigned int counter = 0;
-
-#define PATH "/mnt/c/Users/황선윤/thread-safe-counter/key"
+    key_t key;
+} counter_t;
 
 unsigned int loop_cnt;
+counter_t counter;
+
+void init(counter_t *c) {
+    c->value = 0;
+    c->key = ftok(PATH,'z');
+    c->semid = semget(c->key,1, 0600 | IPC_CREAT); 
+}
+
+void increment(counter_t *c) {
+    int semid;
+    struct sembuf s;
+
+    s.sem_num = 0;
+    s.sem_op = -1; 
+    s.sem_flg = 0;
+    semop(semid, &s, 1);
+    
+    c->value++;
+    
+    s.sem_num = 0;
+    s.sem_op = 1;
+    s.sem_flg = 0;
+    semop(semid, &s, 1);
+}
+
+void decrement(counter_t *c) {
+    int semid;
+    struct sembuf s;
+
+    s.sem_num = 0;
+    s.sem_op = -1; 
+    s.sem_flg = 0;
+    semop(semid, &s, 1);
+    
+    c->value--;
+    
+    s.sem_num = 0;
+    s.sem_op = 1;
+    s.sem_flg = 0;
+    semop(semid, &s, 1);
+}
+
+int get(counter_t *c) {
+    int semid;
+    struct sembuf s;
+    
+    s.sem_num = 0;
+    s.sem_op = -1; 
+    s.sem_flg = 0;
+    semop(semid, &s, 1);
+    
+    int rc = c->value;
+    
+    s.sem_num = 0;
+    s.sem_op = 1;
+    s.sem_flg = 0;
+    semop(semid, &s, 1);
+    
+    return rc;
+}
 
 void *mythread(void *arg)
 {
@@ -31,58 +90,42 @@ void *mythread(void *arg)
     int i;
 
     printf("%s: begin\n", letter);
- 
     for (i = 0; i < loop_cnt; i++) {
-	    s.sem_op = -1;
-    	semop(semid, &s, 1);
-	    
-    	counter = counter + 1;
-    	
-    	s.sem_op = 1;
-    	semop(semid, &s, 1);
+        increment(&counter);
     }
-
     printf("%s: done\n", letter);
     return NULL;
 }
-                                                                             
+
 int main(int argc, char *argv[])
 {                    
-    key = ftok(PATH, 'z');
-    if (key < 0) {
-        perror(argv[0]);
-        exit(1);
-    }
-    semid = semget(key, 1, 0600 | IPC_CREAT);
-    if (semid < 0) {
-        perror(argv[0]);
-        exit(1);
-    }
-
-    printf("semid = %d\n", semid);
-
-    arg.val = 1;
-    semctl(semid, 0, SETVAL, arg);
-
     loop_cnt = atoi(argv[1]);
 
-    clock_t start, end;
-    float res;
+    union semun arg;
+    init(&counter);
+
+    if (counter.key < 0) {
+        perror(argv[0]);
+        exit(1);
+    }
+
+    if (counter.semid < 0) {
+        perror(argv[0]);
+        exit(1);
+    }
+
+    printf("semid = %d\n", counter.semid);
+    
+    counter.arg.val = 1;
+    semctl(counter.semid, 0, SETVAL, counter.arg);
 
     pthread_t p1, p2;
-    printf("main: begin [counter = %d]\n", counter);
+    printf("main: begin [counter = %d]\n", get(&counter));
     pthread_create(&p1, NULL, mythread, "A"); 
     pthread_create(&p2, NULL, mythread, "B");
-    
-    start = clock();
     // join waits for the threads to finish
     pthread_join(p1, NULL); 
     pthread_join(p2, NULL); 
-    end = clock();
-
-    res = (float)(end - start)/CLOCKS_PER_SEC;
-
-    printf("main: done [counter: %d] [should be: %d]\n", counter, loop_cnt * 2);
-    printf("time: %.3f\n",res);
+    printf("main: done [counter: %d] [should be: %d]\n", get(&counter), loop_cnt * 2);
     return 0;
 }
