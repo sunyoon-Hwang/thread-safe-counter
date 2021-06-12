@@ -13,7 +13,7 @@ union semun {
     ushort *array;
 };
 
-#define PATH "/mnt/c"
+#define PATH "/mnt/c/Users/황선윤/thread-safe-counter/key"
 
 typedef struct sem__counter_t {
     int value;
