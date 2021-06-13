@@ -32,54 +32,51 @@ void init(counter_t *c) {
 }
 
 void increment(counter_t *c) {
-    int semid;
     struct sembuf s;
 
     s.sem_num = 0;
     s.sem_op = -1; 
     s.sem_flg = 0;
-    semop(semid, &s, 1);
+    semop(c->semid, &s, 1);
     
     c->value++;
     
     s.sem_num = 0;
     s.sem_op = 1;
     s.sem_flg = 0;
-    semop(semid, &s, 1);
+    semop(c->semid, &s, 1);
 }
 
 void decrement(counter_t *c) {
-    int semid;
     struct sembuf s;
 
     s.sem_num = 0;
     s.sem_op = -1; 
     s.sem_flg = 0;
-    semop(semid, &s, 1);
+    semop(c->semid, &s, 1);
     
     c->value--;
     
     s.sem_num = 0;
     s.sem_op = 1;
     s.sem_flg = 0;
-    semop(semid, &s, 1);
+    semop(c->semid, &s, 1);
 }
 
 int get(counter_t *c) {
-    int semid;
     struct sembuf s;
     
     s.sem_num = 0;
     s.sem_op = -1; 
     s.sem_flg = 0;
-    semop(semid, &s, 1);
+    semop(c->semid, &s, 1);
     
     int rc = c->value;
     
     s.sem_num = 0;
     s.sem_op = 1;
     s.sem_flg = 0;
-    semop(semid, &s, 1);
+    semop(c->semid, &s, 1);
     
     return rc;
 }
@@ -96,7 +93,7 @@ void *mythread(void *arg)
     printf("%s: done\n", letter);
     return NULL;
 }
-
+                                                                             
 int main(int argc, char *argv[])
 {                    
     loop_cnt = atoi(argv[1]);
